@@ -1,7 +1,8 @@
-from typing import Dict, List, Any
+from typing import Dict, Any
 
-from task_decomposition.models import TaskPlan, Task, Dependency, Input
+from task_decomposition.models import TaskPlan, Task
 from task_decomposition.task_graph_builder import TaskGraphBuilder, DelegateRunResult
+from task_decomposition.delegate_runner import DelegateRunner
 
 
 class TaskPlanExecutor:
@@ -11,13 +12,14 @@ class TaskPlanExecutor:
     - Uses TaskGraphBuilder to obtain a topologically sorted list of task IDs.
     - For each task ID, finds the corresponding Task in the TaskPlan.
     - Prepares inputs for the task from dependency results (self.results).
-    - Calls self.run(task, prepared_inputs) to execute the task.
+    - Calls a DelegateRunner to execute the task.
     - Stores each result as a DelegateRunResult in self.results, keyed by task ID.
     """
 
-    def __init__(self, task_plan: TaskPlan) -> None:
+    def __init__(self, task_plan: TaskPlan, delegate_runner: DelegateRunner) -> None:
         self._task_plan = task_plan
         self._builder = TaskGraphBuilder(task_plan)
+        self._delegate_runner = delegate_runner
         self.results: Dict[str, DelegateRunResult] = {}
 
     def execute(self) -> None:
@@ -39,7 +41,7 @@ class TaskPlanExecutor:
             # Prepare inputs from dependency results
             prepared_inputs = self._prepare_inputs_from_dependencies(task)
 
-            # Execute the task and store the result
+            # Execute the task via the delegate runner and store the result
             result = self.run(task, prepared_inputs)
             if not isinstance(result, DelegateRunResult):
                 raise TypeError(
@@ -51,9 +53,6 @@ class TaskPlanExecutor:
         """
         Build a structure of inputs for `task` based on its dependencies and
         previously stored DelegateRunResult objects in self.results.
-
-        For now this is a simple stub that demonstrates how dependency results
-        would be gathered and made available to `run(...)`.
 
         Returns a dict keyed by dependency taskId, each value being the
         corresponding DelegateRunResult.
@@ -73,17 +72,6 @@ class TaskPlanExecutor:
         """
         Execute a single Task and return a DelegateRunResult.
 
-        `prepared_inputs` contains data derived from this task's dependencies,
-        gathered from self.results by _prepare_inputs_from_dependencies().
-
-        This is currently a stub implementation that returns an empty
-        DelegateRunResult for the given task.
+        Delegates the actual execution to the injected DelegateRunner instance.
         """
-        # NOTE: In a real implementation, you would use `task`, `prepared_inputs`,
-        # and possibly `task.inputs` / `task.outputs` metadata to construct the
-        # actual LLM/tool call and map outputs back into a DelegateRunResult.
-        return DelegateRunResult(
-            id=task.id,
-            output_types=[],
-            outputs=[],
-        )
+        return self._delegate_runner.run(task, prepared_inputs)
