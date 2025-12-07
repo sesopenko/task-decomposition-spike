@@ -1,4 +1,4 @@
-from src.task_decomposition.models import TaskPlan
+from task_decomposition.models import TaskPlan
 
 
 
