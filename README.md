@@ -38,4 +38,10 @@ This repository focuses on **defining the schema** and **using an LLM to generat
 - **OpenAI-compatible model** (configured as `gpt-5.1` in `main.py`)
 - A simple **cost calculator** (see `cost_calculator.py` in your repo) to estimate LLM usage cost.
 
+## Licensed MIT
 
+This software is licensed under the MIT license, in [LICENSE.txt](LICENSE.txt)
+
+## Copyright
+
+This software is copyright (c) Sean Esopenko 2025
