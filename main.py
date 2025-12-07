@@ -6,14 +6,17 @@ from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.ollama import OllamaProvider
 
+from cost_calculator import calculate_cost
+
 InputOutputType = Literal["string", "integer", "float", "boolean"]
+
 
 class Input(BaseModel):
     description: str = Field(
         ...,
         description="A description of the input which helps the prompted LLM understand what's is being input",
     )
-    Type: InputOutputType = Field(
+    type: InputOutputType = Field(
         ...,
         description="The basic type of the input, used for validation of the input",
     )
@@ -23,7 +26,7 @@ class Output(BaseModel):
         ...,
         description="A description of the input which helps the prompted LLM understand what's required to output"
     )
-    Type: InputOutputType= Field(
+    type: InputOutputType = Field(
         ...,
         description="The basic type of the input, used for validation of the output",
     )
@@ -41,7 +44,7 @@ class Task(BaseModel):
         default_factory=list,
         description="A list of task ids this task depends on. Used to build a dependency tree and ensures tasks are ran in the correct order of the graph"
     )
-    inputs:  List[Input] = Field(
+    inputs: List[Input] = Field(
         default_factory=list,
         description="A list of input parameters required by this task. Empty if this task doesn't have a dependency. Must match the Output of the dependant task."
     )
@@ -101,28 +104,37 @@ Locations of the sandpoint hinterlands:
 
 ## Control:
 
-## Outcome:
-Each location must have the following properties:
+Must produce 1 document for each location.
+
+## Output:
+Each location must have the following sections in the document:
 
 * Location Overview. Purpose: provide a quick, evocative summary
 * Geography & Environment. Purpose: Ground the location int he world's physical reality
 * Notable Features. Purpose: Identify key areas a party may explore.
 
-Each location's property must be formatted with markdown.
+Each location's document must be formatted with markdown.
+
     """)
-    print(result.usage())
+    usage = result.usage()
+    print(calculate_cost(usage))
+
     plan: TaskPlan = result.output
-    print(result.output)
     print(f"Objective: {result.output.objective}")
+    print()
     for task in plan.tasks:
         print(f"Task: {task.id}")
-        print(f"Prompt: {task.prompt}")
+        print(f"Prompt:")
+        print("```")
+        print(task.prompt)
+        print("```")
         for dep in task.dependsOn:
             print(f"Depends on: {dep}")
-        for input in task.input:
-            print(f"Input: {input.description}/{input.type}")
-        for output in task.output:
-            print(f"Output: {output.description}/{output.type}")
+        for input in task.inputs:
+            print(f"Input ({input.type}): {input.description}")
+        for output in task.outputs:
+            print(f"Output ({output.type}): {output.description}")
+        print()
 
 
 
