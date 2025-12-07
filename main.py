@@ -1,30 +1,54 @@
 from typing import List, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.ollama import OllamaProvider
 
-class TaskInput(BaseModel):
-    jsonschema: str
-
 InputOutputType = Literal["string", "integer", "float", "boolean"]
 
 class Input(BaseModel):
-    id: str
-    Type: InputOutputType
+    description: str = Field(
+        ...,
+        description="A description of the input which helps the prompted LLM understand what's is being input",
+    )
+    Type: InputOutputType = Field(
+        ...,
+        description="The basic type of the input, used for validation of the input",
+    )
 
 class Output(BaseModel):
-    id: str
-    Type: InputOutputType
+    description: str = Field(
+        ...,
+        description="A description of the input which helps the prompted LLM understand what's required to output"
+    )
+    Type: InputOutputType= Field(
+        ...,
+        description="The basic type of the input, used for validation of the output",
+    )
 
 class Task(BaseModel):
-    id: str
-    prompt: str
-    dependsOn: List[str]
-    Input:  List[TaskInput]
-    Output: List[Output]
+    id: str = Field(
+        ...,
+        description="A unique identifier for the task, referred to by dependencies."
+    )
+    prompt: str = Field(
+        ...,
+        description="The LLM prompt for the agent to run. Must follow the format: Role:, Intent:, Context:, Constraints:, Output:"
+    )
+    dependsOn: List[str] = Field(
+        default_factory=list,
+        description="A list of task ids this task depends on. Used to build a dependency tree and ensures tasks are ran in the correct order of the graph"
+    )
+    inputs:  List[Input] = Field(
+        default_factory=list,
+        description="A list of input parameters required by this task. Empty if this task doesn't have a dependency. Must match the Output of the dependant task."
+    )
+    outputs: List[Output] = Field(
+        default_factory=list,
+        description="A list of output properties output by this task. Empty if this task doesn't have any output (ie: calls a tool). Inputs of tasks must match this task's output."
+    )
 
 
 class TaskPlan(BaseModel):
@@ -88,11 +112,17 @@ Each location's property must be formatted with markdown.
     """)
     print(result.usage())
     plan: TaskPlan = result.output
+    print(result.output)
     print(f"Objective: {result.output.objective}")
     for task in plan.tasks:
         print(f"Task: {task.id}")
         print(f"Prompt: {task.prompt}")
-        print()
+        for dep in task.dependsOn:
+            print(f"Depends on: {dep}")
+        for input in task.input:
+            print(f"Input: {input.description}/{input.type}")
+        for output in task.output:
+            print(f"Output: {output.description}/{output.type}")
 
 
 
