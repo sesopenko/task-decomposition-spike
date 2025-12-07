@@ -1,7 +1,7 @@
 import pytest
 
 from task_decomposition.models import TaskPlan, Task, Dependency, Input, Output
-from task_decomposition.task_graph_builder import TaskGraphBuilder
+from task_decomposition.task_graph_builder import TaskGraphBuilder, DelegateRunResult
 
 
 def make_input(description: str = "desc", type_: str = "string") -> Input:
@@ -68,3 +68,43 @@ def test_get_sorted_id():
     # Once implemented, we expect a topologically sorted list that respects
     # the dependencies T1 -> T2 -> T3.
     assert sorted == ["T1", "T2", "T3"]
+
+
+def test_delegate_run_result_valid():
+    result = DelegateRunResult(
+        id="run-1",
+        output_types=["string", "integer", "float"],
+        outputs=["hello", 42, 3.14],
+    )
+
+    assert result.id == "run-1"
+    assert result.output_types == ["string", "integer", "float"]
+    assert result.outputs == ["hello", 42, 3.14]
+
+
+def test_delegate_run_result_invalid_length_mismatch():
+    with pytest.raises(ValueError):
+        DelegateRunResult(
+            id="run-2",
+            output_types=["string", "integer"],
+            outputs=["only-one-value"],
+        )
+
+
+@pytest.mark.parametrize(
+    "output_types, outputs",
+    [
+        (["string"], [123]),          # not a string
+        (["integer"], ["not-int"]),   # not an int
+        (["float"], ["not-float"]),   # not a float/int
+        (["integer"], [True]),        # bool should be rejected for integer
+        (["float"], [False]),         # bool should be rejected for float
+    ],
+)
+def test_delegate_run_result_invalid_type_mismatch(output_types, outputs):
+    with pytest.raises(TypeError):
+        DelegateRunResult(
+            id="run-3",
+            output_types=output_types,
+            outputs=outputs,
+        )
