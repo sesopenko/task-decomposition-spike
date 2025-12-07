@@ -84,7 +84,7 @@ From the root of the repository:
 
 ## Licensed MIT
 
-This software is licensed under the MIT license, in [LICENSE.txt](LICENSE.txt)
+This software is licensed under the GNU GPL v3 license, in [LICENSE.txt](LICENSE.txt)
 
 ## Copyright
 

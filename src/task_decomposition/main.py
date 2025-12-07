@@ -1,10 +1,7 @@
 from pydantic_ai import Agent
 
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.providers.ollama import OllamaProvider
-
-from cost_calculator import calculate_cost
-from models import TaskPlan
+from task_decomposition.cost_calculator import calculate_cost
+from task_decomposition.models import TaskPlan
 
 
 def main():
