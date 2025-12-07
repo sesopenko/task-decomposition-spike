@@ -21,7 +21,7 @@ def main():
             "- You break this objective into a set of smaller, well-defined tasks.\n"
             "- Each task will be executed by a separate LLM-backed delegate agent.\n"
             "- Delegate agents have limited context: they only see their own task prompt and the "
-            "structured inputs passed from upstream tasks.\n"
+            "structured inputs passed into context from upstream tasks as structured objects extending BaseModel from the Pedantic AI python library..\n"
             "- Your goal is to design tasks so that these smaller-context agents can collectively "
             "produce a better result than a single monolithic prompt.\n\n"
 
