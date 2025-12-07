@@ -38,6 +38,50 @@ This repository focuses on **defining the schema** and **using an LLM to generat
 - **OpenAI-compatible model** (configured as `gpt-5.1` in `main.py`)
 - A simple **cost calculator** (see `cost_calculator.py` in your repo) to estimate LLM usage cost.
 
+## Getting Started with `uv`
+
+This project is set up to use [`uv`](https://github.com/astral-sh/uv) for dependency management and virtual environments.
+
+From the root of the repository:
+
+1. **Install dependencies and create the virtual environment**
+
+   ```bash
+   uv sync
+   ```
+
+   This reads `pyproject.toml` and `uv.lock` and installs everything into a `.venv` directory.
+
+2. **Activate the virtual environment**
+
+   On macOS / Linux:
+
+   ```bash
+   source .venv/bin/activate
+   ```
+
+   On Windows (PowerShell):
+
+   ```powershell
+   .venv\Scripts\Activate.ps1
+   ```
+
+   On Windows (cmd):
+
+   ```cmd
+   .venv\Scripts\activate.bat
+   ```
+
+3. **Run the prototype**
+
+   Once the venv is active:
+
+   ```bash
+   python main.py
+   ```
+
+   Make sure your OpenAI-compatible API credentials are configured as required by `pydantic-ai`.
+
 ## Licensed MIT
 
 This software is licensed under the MIT license, in [LICENSE.txt](LICENSE.txt)
