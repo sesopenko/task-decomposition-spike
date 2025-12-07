@@ -8,7 +8,7 @@ from pydantic_ai.providers.ollama import OllamaProvider
 
 from cost_calculator import calculate_cost
 
-InputOutputType = Literal["string", "integer", "float", "boolean"]
+DataType = Literal["string", "integer", "float", "boolean"]
 
 
 class Input(BaseModel):
@@ -16,7 +16,7 @@ class Input(BaseModel):
         ...,
         description="A description of the input which helps the prompted LLM understand what's is being input",
     )
-    type: InputOutputType = Field(
+    type: DataType = Field(
         ...,
         description="The basic type of the input, used for validation of the input",
     )
@@ -26,9 +26,19 @@ class Output(BaseModel):
         ...,
         description="A description of the input which helps the prompted LLM understand what's required to output"
     )
-    type: InputOutputType = Field(
+    type: DataType = Field(
         ...,
         description="The basic type of the input, used for validation of the output",
+    )
+
+class Dependency(BaseModel):
+    taskId: str = Field(
+        ...,
+        description="The id of the task for this dependency",
+    )
+    inputs: List[Input] = Field(
+        default_factory=list,
+        description="A list of inputs required by the dependency"
     )
 
 class Task(BaseModel):
@@ -38,11 +48,11 @@ class Task(BaseModel):
     )
     prompt: str = Field(
         ...,
-        description="The LLM prompt for the agent to run. Must follow the format: Role:, Intent:, Context:, Constraints:, Output:"
+        description="The LLM prompt for the agent to run. Must follow the format: Role:, Intent:, Context:, Constraints:, Output:, must explain the dependencies and outputs."
     )
-    dependsOn: List[str] = Field(
+    dependsOn: List[Dependency] = Field(
         default_factory=list,
-        description="A list of task ids this task depends on. Used to build a dependency tree and ensures tasks are ran in the correct order of the graph"
+        description="A list of tasks this task depends on and their outputs. Used to build a dependency tree and ensures tasks are ran in the correct order of the graph"
     )
     inputs: List[Input] = Field(
         default_factory=list,
@@ -55,16 +65,16 @@ class Task(BaseModel):
 
 
 class TaskPlan(BaseModel):
-    objective: str
-    tasks: List[Task]
-    notes: str
-
-def main():
-    ollama_model = OpenAIChatModel(
-        model_name="mistral-nemo:12b",
-        provider=OllamaProvider(base_url="http://localhost:11434/v1"),
+    objective: str = Field(
+        ...,
+        description="The overall objective of the task set"
+    )
+    tasks: List[Task] = Field(
+        default_factory=list,
+        description="The tasks which must be complete to complete the overall task. Will form a graph of prompts executed by agents and fed into dependant tasks."
     )
 
+def main():
     agent = Agent(
         model='gpt-5.1',
         output_type=TaskPlan,
