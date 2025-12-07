@@ -12,7 +12,7 @@ def make_output(description: str = "desc", type_: str = "string") -> Output:
     return Output(description=description, type=type_)
 
 
-def test_get_sorted_id_list_raises_not_implemented():
+def test_get_sorted_id():
     """
     For now TaskGraphBuilder.get_sorted_id_list is intentionally not implemented.
     This test documents the current behavior (raising an Exception) so we have a
@@ -63,6 +63,8 @@ def test_get_sorted_id_list_raises_not_implemented():
 
     # At this stage of "red, green, refactor" we expect the method to raise,
     # because it's explicitly not implemented yet.
+    sorted: list[str] = builder.get_sorted_id_list()
 
-    sorted: list[str] = builder.get_sorted_id_list(["T1", "T2", "T3"])
-
+    # Once implemented, we expect a topologically sorted list that respects
+    # the dependencies T1 -> T2 -> T3.
+    assert sorted == ["T1", "T2", "T3"]
