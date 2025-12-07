@@ -31,11 +31,11 @@ class Output(BaseModel):
 class Dependency(BaseModel):
     taskId: str = Field(
         ...,
-        description="The id of the task for this dependency",
+        description="The id of the task for this dependency. Will fail if none of the tasks have this id.",
     )
     inputs: List[Input] = Field(
         default_factory=list,
-        description="A list of inputs required by the dependency"
+        description="A list of inputs required by the dependency. Will fail if the dependency task's outputs don't match these inputs."
     )
 
 
@@ -51,10 +51,6 @@ class Task(BaseModel):
     dependsOn: List[Dependency] = Field(
         default_factory=list,
         description="A list of tasks this task depends on and their outputs. Used to build a dependency tree and ensures tasks are ran in the correct order of the graph"
-    )
-    inputs: List[Input] = Field(
-        default_factory=list,
-        description="A list of input parameters required by this task. Empty if this task doesn't have a dependency. Must match the Output of the dependant task."
     )
     outputs: List[Output] = Field(
         default_factory=list,

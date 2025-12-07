@@ -7,6 +7,7 @@ from task_decomposition.models import TaskPlan
 def main():
     agent = Agent(
         model='gpt-5.1',
+        retries=5,
         output_type=TaskPlan,
         system_prompt=(
             'Role:'
@@ -44,7 +45,7 @@ Locations of the sandpoint hinterlands:
 
 ## Control:
 
-Must produce 1 document for each location.
+Must produce 1 document for each location.  documents must be markdown syntax.
 
 ## Output:
 Each location must have the following sections in the document:
@@ -69,9 +70,9 @@ Each location's document must be formatted with markdown.
         print(task.prompt)
         print("```")
         for dep in task.dependsOn:
-            print(f"Depends on: {dep}")
-        for input in task.inputs:
-            print(f"Input ({input.type}): {input.description}")
+            print(f"Depends on: {dep.taskId}")
+            for i in dep.inputs:
+                print(f"Input ({i.type}): {i.description}")
         for output in task.outputs:
             print(f"Output ({output.type}): {output.description}")
         print()
