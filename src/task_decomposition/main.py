@@ -2,7 +2,9 @@ from pydantic_ai import Agent
 
 from task_decomposition.cost_calculator import calculate_cost
 from task_decomposition.models import TaskPlan
+import inflect
 
+p = inflect.engine()
 
 def main():
     agent = Agent(
@@ -90,10 +92,12 @@ Each location's document must be formatted with markdown.
     """)
     usage = result.usage()
     print(calculate_cost(usage))
+    print(f"Took {usage.requests} {p.plural("try", usage.requests)}")
 
     plan: TaskPlan = result.output
     print(f"Objective: {result.output.objective}")
     print()
+    print(f"Requires {len(plan.tasks)} {p.plural('task', len(plan.tasks))}")
     for task in plan.tasks:
         print(f"Task: {task.id}")
         print(f"Prompt:")
