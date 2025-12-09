@@ -3,6 +3,7 @@ from pydantic_ai import Agent
 from task_decomposition.cost_calculator import calculate_cost
 from task_decomposition.models import TaskPlan
 from task_decomposition.task_plan_builder import DefaultTaskPlanAgentBuilder
+from task_decomposition.task_plan_validator import TaskPlanValidator
 import inflect
 
 p = inflect.engine()
@@ -50,7 +51,13 @@ Each location's document must be formatted with markdown.
     print(f"Took {usage.requests} {p.plural('try', usage.requests)}")
 
     plan: TaskPlan = result.output
-    print(f"Objective: {result.output.objective}")
+
+    # Validate the generated TaskPlan before using it
+    validator = TaskPlanValidator()
+    if not validator.validate(plan):
+        raise ValueError("Generated TaskPlan is invalid according to TaskPlanValidator")
+
+    print(f"Objective: {plan.objective}")
     print()
     print(f"Requires {len(plan.tasks)} {p.plural('task', len(plan.tasks))}")
     for task in plan.tasks:
