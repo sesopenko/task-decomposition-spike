@@ -49,116 +49,245 @@ class TestTaskPlanValidator:
     # Cyclic dependency tests
     # -------------------------------------------------------------------------
 
-    def test_cyclic_dependencies(self) -> None:
-        """
-        TaskPlanValidator should return False when the dependency graph
-        contains any cycle, and True when it is acyclic.
-        """
-        scenarios = [
-            {
-                "name": "no_tasks_is_trivially_acyclic",
-                "task_plan": TaskPlan(objective="empty", tasks=[]),
-                "expected_valid": True,
-            },
-            {
-                "name": "single_task_no_dependencies",
-                "task_plan": TaskPlan(
+    @pytest.mark.parametrize(
+        "name, task_plan, expected_valid",
+        [
+            pytest.param(
+                "no_tasks_is_trivially_acyclic",
+                TaskPlan(objective="empty", tasks=[]),
+                True,
+                id="no_tasks_is_trivially_acyclic",
+            ),
+            pytest.param(
+                "single_task_no_dependencies",
+                TaskPlan(
                     objective="single",
-                    tasks=[self._make_task("t1")],
+                    tasks=[
+                        _make_task.__func__("t1"),  # type: ignore[attr-defined]
+                    ],
                 ),
-                "expected_valid": True,
-            },
-            {
-                "name": "two_tasks_linear_dependency",
-                "task_plan": TaskPlan(
+                True,
+                id="single_task_no_dependencies",
+            ),
+            pytest.param(
+                "two_tasks_linear_dependency",
+                TaskPlan(
                     objective="linear",
                     tasks=[
-                        self._make_task("t1"),
-                        self._make_task(
+                        _make_task.__func__("t1"),  # type: ignore[attr-defined]
+                        _make_task.__func__(
                             "t2",
                             depends_on=[
                                 Dependency(taskId="t1", inputs=[]),
                             ],
-                        ),
+                        ),  # type: ignore[attr-defined]
                     ],
                 ),
-                "expected_valid": True,
-            },
-            {
-                "name": "simple_two_node_cycle",
-                "task_plan": TaskPlan(
+                True,
+                id="two_tasks_linear_dependency",
+            ),
+            pytest.param(
+                "simple_two_node_cycle",
+                TaskPlan(
                     objective="cycle",
                     tasks=[
-                        self._make_task(
+                        _make_task.__func__(
                             "t1",
                             depends_on=[Dependency(taskId="t2", inputs=[])],
-                        ),
-                        self._make_task(
+                        ),  # type: ignore[attr-defined]
+                        _make_task.__func__(
                             "t2",
                             depends_on=[Dependency(taskId="t1", inputs=[])],
-                        ),
+                        ),  # type: ignore[attr-defined]
                     ],
                 ),
-                "expected_valid": False,
-            },
-            {
-                "name": "three_node_cycle",
-                "task_plan": TaskPlan(
+                False,
+                id="simple_two_node_cycle",
+            ),
+            pytest.param(
+                "three_node_cycle",
+                TaskPlan(
                     objective="3-cycle",
                     tasks=[
-                        self._make_task(
+                        _make_task.__func__(
                             "t1",
                             depends_on=[Dependency(taskId="t2", inputs=[])],
-                        ),
-                        self._make_task(
+                        ),  # type: ignore[attr-defined]
+                        _make_task.__func__(
                             "t2",
                             depends_on=[Dependency(taskId="t3", inputs=[])],
-                        ),
-                        self._make_task(
+                        ),  # type: ignore[attr-defined]
+                        _make_task.__func__(
                             "t3",
                             depends_on=[Dependency(taskId="t1", inputs=[])],
-                        ),
+                        ),  # type: ignore[attr-defined]
                     ],
                 ),
-                "expected_valid": False,
-            },
-            {
-                "name": "diamond_shape_no_cycle",
-                "task_plan": TaskPlan(
+                False,
+                id="three_node_cycle",
+            ),
+            pytest.param(
+                "diamond_shape_no_cycle",
+                TaskPlan(
                     objective="diamond",
                     tasks=[
-                        self._make_task("root"),
-                        self._make_task(
+                        _make_task.__func__("root"),  # type: ignore[attr-defined]
+                        _make_task.__func__(
                             "left",
                             depends_on=[Dependency(taskId="root", inputs=[])],
-                        ),
-                        self._make_task(
+                        ),  # type: ignore[attr-defined]
+                        _make_task.__func__(
                             "right",
                             depends_on=[Dependency(taskId="root", inputs=[])],
-                        ),
-                        self._make_task(
+                        ),  # type: ignore[attr-defined]
+                        _make_task.__func__(
                             "leaf",
                             depends_on=[
                                 Dependency(taskId="left", inputs=[]),
                                 Dependency(taskId="right", inputs=[]),
                             ],
-                        ),
+                        ),  # type: ignore[attr-defined]
                     ],
                 ),
-                "expected_valid": True,
-            },
-        ]
-
-        for scenario in scenarios:
-            with self.subtests(msg=scenario["name"]):
-                result = self.validator.validate(scenario["task_plan"])
-                assert result is scenario["expected_valid"]
+                True,
+                id="diamond_shape_no_cycle",
+            ),
+        ],
+    )
+    def test_cyclic_dependencies(
+        self, name: str, task_plan: TaskPlan, expected_valid: bool
+    ) -> None:
+        """
+        TaskPlanValidator should return False when the dependency graph
+        contains any cycle, and True when it is acyclic.
+        """
+        result = self.validator.validate(task_plan)
+        assert result is expected_valid
 
     # -------------------------------------------------------------------------
     # Input/output compatibility tests
     # -------------------------------------------------------------------------
 
-    def test_invalid_input_outputs(self) -> None:
+    @pytest.mark.parametrize(
+        "name, task_plan, expected_valid",
+        [
+            pytest.param(
+                "valid_matching_counts_and_types",
+                TaskPlan(
+                    objective="valid-io",
+                    tasks=[
+                        _make_task.__func__(
+                            "producer_valid",
+                            outputs=[
+                                _make_output.__func__(type_="string"),
+                                _make_output.__func__(type_="integer"),
+                            ],
+                        ),  # type: ignore[attr-defined]
+                        _make_task.__func__(
+                            "consumer_valid",
+                            depends_on=[
+                                Dependency(
+                                    taskId="producer_valid",
+                                    inputs=[
+                                        _make_input.__func__(type_="string"),
+                                        _make_input.__func__(type_="integer"),
+                                    ],
+                                )
+                            ],
+                        ),  # type: ignore[attr-defined]
+                    ],
+                ),
+                True,
+                id="valid_matching_counts_and_types",
+            ),
+            pytest.param(
+                "invalid_fewer_inputs_than_outputs",
+                TaskPlan(
+                    objective="fewer-inputs",
+                    tasks=[
+                        _make_task.__func__(
+                            "producer_more_outputs",
+                            outputs=[
+                                _make_output.__func__(type_="string"),
+                                _make_output.__func__(type_="integer"),
+                            ],
+                        ),  # type: ignore[attr-defined]
+                        _make_task.__func__(
+                            "consumer_fewer_inputs",
+                            depends_on=[
+                                Dependency(
+                                    taskId="producer_more_outputs",
+                                    inputs=[
+                                        _make_input.__func__(type_="string"),
+                                    ],
+                                )
+                            ],
+                        ),  # type: ignore[attr-defined]
+                    ],
+                ),
+                False,
+                id="invalid_fewer_inputs_than_outputs",
+            ),
+            pytest.param(
+                "invalid_more_inputs_than_outputs",
+                TaskPlan(
+                    objective="more-inputs",
+                    tasks=[
+                        _make_task.__func__(
+                            "producer_fewer_outputs",
+                            outputs=[
+                                _make_output.__func__(type_="string"),
+                            ],
+                        ),  # type: ignore[attr-defined]
+                        _make_task.__func__(
+                            "consumer_more_inputs",
+                            depends_on=[
+                                Dependency(
+                                    taskId="producer_fewer_outputs",
+                                    inputs=[
+                                        _make_input.__func__(type_="string"),
+                                        _make_input.__func__(type_="integer"),
+                                    ],
+                                )
+                            ],
+                        ),  # type: ignore[attr-defined]
+                    ],
+                ),
+                False,
+                id="invalid_more_inputs_than_outputs",
+            ),
+            pytest.param(
+                "invalid_mismatched_types",
+                TaskPlan(
+                    objective="type-mismatch",
+                    tasks=[
+                        _make_task.__func__(
+                            "producer_type_mismatch",
+                            outputs=[
+                                _make_output.__func__(type_="string"),
+                            ],
+                        ),  # type: ignore[attr-defined]
+                        _make_task.__func__(
+                            "consumer_type_mismatch",
+                            depends_on=[
+                                Dependency(
+                                    taskId="producer_type_mismatch",
+                                    inputs=[
+                                        _make_input.__func__(type_="integer"),
+                                    ],
+                                )
+                            ],
+                        ),  # type: ignore[attr-defined]
+                    ],
+                ),
+                False,
+                id="invalid_mismatched_types",
+            ),
+        ],
+    )
+    def test_invalid_input_outputs(
+        self, name: str, task_plan: TaskPlan, expected_valid: bool
+    ) -> None:
         """
         For each dependency, the declared inputs must be compatible with the
         outputs of the referenced task:
@@ -168,207 +297,113 @@ class TestTaskPlanValidator:
 
         If any dependency violates these rules, validate(...) should return False.
         """
-
-        scenarios = [
-            {
-                "name": "valid_matching_counts_and_types",
-                "task_plan": TaskPlan(
-                    objective="valid-io",
-                    tasks=[
-                        self._make_task(
-                            "producer_valid",
-                            outputs=[
-                                self._make_output(type_="string"),
-                                self._make_output(type_="integer"),
-                            ],
-                        ),
-                        self._make_task(
-                            "consumer_valid",
-                            depends_on=[
-                                Dependency(
-                                    taskId="producer_valid",
-                                    inputs=[
-                                        self._make_input(type_="string"),
-                                        self._make_input(type_="integer"),
-                                    ],
-                                )
-                            ],
-                        ),
-                    ],
-                ),
-                "expected_valid": True,
-            },
-            {
-                "name": "invalid_fewer_inputs_than_outputs",
-                "task_plan": TaskPlan(
-                    objective="fewer-inputs",
-                    tasks=[
-                        self._make_task(
-                            "producer_more_outputs",
-                            outputs=[
-                                self._make_output(type_="string"),
-                                self._make_output(type_="integer"),
-                            ],
-                        ),
-                        self._make_task(
-                            "consumer_fewer_inputs",
-                            depends_on=[
-                                Dependency(
-                                    taskId="producer_more_outputs",
-                                    inputs=[
-                                        self._make_input(type_="string"),
-                                    ],
-                                )
-                            ],
-                        ),
-                    ],
-                ),
-                "expected_valid": False,
-            },
-            {
-                "name": "invalid_more_inputs_than_outputs",
-                "task_plan": TaskPlan(
-                    objective="more-inputs",
-                    tasks=[
-                        self._make_task(
-                            "producer_fewer_outputs",
-                            outputs=[
-                                self._make_output(type_="string"),
-                            ],
-                        ),
-                        self._make_task(
-                            "consumer_more_inputs",
-                            depends_on=[
-                                Dependency(
-                                    taskId="producer_fewer_outputs",
-                                    inputs=[
-                                        self._make_input(type_="string"),
-                                        self._make_input(type_="integer"),
-                                    ],
-                                )
-                            ],
-                        ),
-                    ],
-                ),
-                "expected_valid": False,
-            },
-            {
-                "name": "invalid_mismatched_types",
-                "task_plan": TaskPlan(
-                    objective="type-mismatch",
-                    tasks=[
-                        self._make_task(
-                            "producer_type_mismatch",
-                            outputs=[
-                                self._make_output(type_="string"),
-                            ],
-                        ),
-                        self._make_task(
-                            "consumer_type_mismatch",
-                            depends_on=[
-                                Dependency(
-                                    taskId="producer_type_mismatch",
-                                    inputs=[
-                                        self._make_input(type_="integer"),
-                                    ],
-                                )
-                            ],
-                        ),
-                    ],
-                ),
-                "expected_valid": False,
-            },
-        ]
-
-        for scenario in scenarios:
-            with self.subtests(msg=scenario["name"]):
-                result = self.validator.validate(scenario["task_plan"])
-                assert result is scenario["expected_valid"]
+        result = self.validator.validate(task_plan)
+        assert result is expected_valid
 
     # -------------------------------------------------------------------------
     # Undefined dependency tests
     # -------------------------------------------------------------------------
 
-    def test_undefined_dependency(self) -> None:
+    @pytest.mark.parametrize(
+        "name, task_plan, expected_valid",
+        [
+            pytest.param(
+                "no_dependencies_is_valid",
+                TaskPlan(
+                    objective="no-deps",
+                    tasks=[
+                        _make_task.__func__("t1"),  # type: ignore[attr-defined]
+                    ],
+                ),
+                True,
+                id="no_dependencies_is_valid",
+            ),
+            pytest.param(
+                "all_dependencies_defined",
+                TaskPlan(
+                    objective="all-defined",
+                    tasks=[
+                        _make_task.__func__(
+                            "producer",
+                            outputs=[_make_output.__func__()],
+                        ),  # type: ignore[attr-defined]
+                        _make_task.__func__(
+                            "consumer_valid",
+                            depends_on=[
+                                Dependency(
+                                    taskId="producer",
+                                    inputs=[_make_input.__func__()],
+                                )
+                            ],
+                        ),  # type: ignore[attr-defined]
+                    ],
+                ),
+                True,
+                id="all_dependencies_defined",
+            ),
+            pytest.param(
+                "undefined_dependency_task_id",
+                TaskPlan(
+                    objective="undefined-dep",
+                    tasks=[
+                        _make_task.__func__(
+                            "producer",
+                            outputs=[_make_output.__func__()],
+                        ),  # type: ignore[attr-defined]
+                        _make_task.__func__(
+                            "consumer_invalid",
+                            depends_on=[
+                                Dependency(
+                                    taskId="missing_task",
+                                    inputs=[_make_input.__func__()],
+                                )
+                            ],
+                        ),  # type: ignore[attr-defined]
+                    ],
+                ),
+                False,
+                id="undefined_dependency_task_id",
+            ),
+            pytest.param(
+                "multiple_dependencies_one_undefined",
+                TaskPlan(
+                    objective="mixed-deps",
+                    tasks=[
+                        _make_task.__func__(
+                            "producer",
+                            outputs=[_make_output.__func__()],
+                        ),  # type: ignore[attr-defined]
+                        _make_task.__func__(
+                            "another",
+                            outputs=[_make_output.__func__()],
+                        ),  # type: ignore[attr-defined]
+                        _make_task.__func__(
+                            "consumer_mixed",
+                            depends_on=[
+                                Dependency(
+                                    taskId="producer",
+                                    inputs=[_make_input.__func__()],
+                                ),
+                                Dependency(
+                                    taskId="non_existent",
+                                    inputs=[_make_input.__func__()],
+                                ),
+                            ],
+                        ),  # type: ignore[attr-defined]
+                    ],
+                ),
+                False,
+                id="multiple_dependencies_one_undefined",
+            ),
+        ],
+    )
+    def test_undefined_dependency(
+        self, name: str, task_plan: TaskPlan, expected_valid: bool
+    ) -> None:
         """
         Every Dependency.taskId must reference an existing Task.id in the same
         TaskPlan. If any dependency refers to a non-existent task, validate(...)
         should return False.
         """
-        producer = self._make_task("producer", outputs=[self._make_output()])
-
-        consumer_with_valid_dep = self._make_task(
-            "consumer_valid",
-            depends_on=[
-                Dependency(
-                    taskId="producer",
-                    inputs=[self._make_input()],
-                )
-            ],
-        )
-
-        consumer_with_undefined_dep = self._make_task(
-            "consumer_invalid",
-            depends_on=[
-                Dependency(
-                    taskId="missing_task",
-                    inputs=[self._make_input()],
-                )
-            ],
-        )
-
-        scenarios = [
-            {
-                "name": "no_dependencies_is_valid",
-                "task_plan": TaskPlan(
-                    objective="no-deps",
-                    tasks=[self._make_task("t1")],
-                ),
-                "expected_valid": True,
-            },
-            {
-                "name": "all_dependencies_defined",
-                "task_plan": TaskPlan(
-                    objective="all-defined",
-                    tasks=[producer, consumer_with_valid_dep],
-                ),
-                "expected_valid": True,
-            },
-            {
-                "name": "undefined_dependency_task_id",
-                "task_plan": TaskPlan(
-                    objective="undefined-dep",
-                    tasks=[producer, consumer_with_undefined_dep],
-                ),
-                "expected_valid": False,
-            },
-            {
-                "name": "multiple_dependencies_one_undefined",
-                "task_plan": TaskPlan(
-                    objective="mixed-deps",
-                    tasks=[
-                        producer,
-                        self._make_task("another", outputs=[self._make_output()]),
-                        self._make_task(
-                            "consumer_mixed",
-                            depends_on=[
-                                Dependency(
-                                    taskId="producer",
-                                    inputs=[self._make_input()],
-                                ),
-                                Dependency(
-                                    taskId="non_existent",
-                                    inputs=[self._make_input()],
-                                ),
-                            ],
-                        ),
-                    ],
-                ),
-                "expected_valid": False,
-            },
-        ]
-
-        for scenario in scenarios:
-            with self.subtests(msg=scenario["name"]):
-                result = self.validator.validate(scenario["task_plan"])
-                assert result is scenario["expected_valid"]
+        result = self.validator.validate(task_plan)
+        assert result is expected_valid
