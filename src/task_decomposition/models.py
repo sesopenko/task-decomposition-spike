@@ -1,7 +1,7 @@
-from typing import List, Literal
+from typing import List, Literal, Dict, Any
 
 from pydantic import BaseModel, Field
-
+from pydantic_ai import StructuredDict
 
 DataType = Literal["string", "integer", "float", "boolean"]
 
@@ -57,6 +57,46 @@ class Task(BaseModel):
         description="A list of output properties output by this task. Empty if this task doesn't have any output (ie: calls a tool). Inputs of tasks must match this task's output."
     )
 
+    def OutputsToSchema(self) -> str:
+        """
+        Convert this Task's outputs into a JSON Schema string.
+
+        - The schema is always for an object.
+        - Each Output becomes a property named item_0, item_1, ..., item_n-1.
+        - All properties are required.
+        - Output.type is mapped to the appropriate JSON Schema "type".
+        """
+        import json
+
+        # Map our DataType to JSON Schema primitive types
+        type_map: Dict[DataType, str] = {
+            "string": "string",
+            "integer": "integer",
+            "float": "number",
+            "boolean": "boolean",
+        }
+
+        properties: Dict[str, Dict[str, Any]] = {}
+        required: List[str] = []
+
+        for index, output in enumerate(self.outputs):
+            key = f"item_{index}"
+            properties[key] = {
+                "type": type_map[output.type],
+                "description": output.description,
+            }
+            required.append(key)
+
+        schema: Dict[str, Any] = {
+            "type": "object",
+            "properties": properties,
+        }
+
+        # Only include "required" if there are any properties
+        if required:
+            schema["required"] = required
+
+        return json.dumps(schema)
 
 class TaskPlan(BaseModel):
     objective: str = Field(
