@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 
-from task_decomposition.models import Task
+from task_decomposition.models_schema import Task
 from task_decomposition.task_graph_builder import DelegateRunResult
 
 

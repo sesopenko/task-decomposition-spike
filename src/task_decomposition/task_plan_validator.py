@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Dict, List, Set
 
-from .models import Dependency, Task, TaskPlan
+from .models_schema import Dependency, Task, TaskPlan
 
 logger = logging.getLogger(__name__)
 

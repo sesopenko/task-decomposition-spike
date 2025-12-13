@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import List, Literal, Union
 from graphlib import TopologicalSorter
 
-from task_decomposition.models import TaskPlan
+from task_decomposition.models_schema import TaskPlan
 
 
 OutputPrimitiveType = Literal["string", "integer", "float"]

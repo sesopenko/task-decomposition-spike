@@ -1,6 +1,6 @@
 import pytest
 
-from task_decomposition.models import TaskPlan, Task, Dependency, Input, Output
+from task_decomposition.models_schema import TaskPlan, Task, Dependency, Input, Output
 from task_decomposition.task_graph_builder import TaskGraphBuilder, DelegateRunResult
 
 

@@ -1,6 +1,6 @@
 from typing import Dict, Any
 
-from task_decomposition.models import TaskPlan, Task
+from task_decomposition.models_schema import TaskPlan, Task
 from task_decomposition.task_graph_builder import TaskGraphBuilder, DelegateRunResult
 from task_decomposition.delegate_runner import DelegateRunner
 

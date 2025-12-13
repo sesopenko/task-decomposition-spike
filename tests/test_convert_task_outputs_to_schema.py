@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from task_decomposition.models import Task, Output
+from task_decomposition.models_schema import Task, Output
 
 
 class TestOutputsToSchema:

@@ -3,7 +3,7 @@ import logging
 from pydantic_ai import Agent
 
 from task_decomposition.cost_calculator import calculate_cost
-from task_decomposition.models import TaskPlan
+from task_decomposition.models_schema import TaskPlan
 from task_decomposition.task_plan_builder import DefaultTaskPlanAgentBuilder
 from task_decomposition.task_plan_validator import TaskPlanValidator
 import inflect

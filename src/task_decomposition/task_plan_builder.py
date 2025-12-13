@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 from pydantic_ai import Agent
 
-from task_decomposition.models import TaskPlan
+from task_decomposition.models_schema import TaskPlan
 
 
 class TaskPlanAgentBuilder(ABC):
