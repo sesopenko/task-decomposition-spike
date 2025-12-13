@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from pydantic_ai import Agent, StructuredDict, format_as_xml
 
@@ -33,11 +33,11 @@ class DelegateRunner:
 
     def run(self, task: Task, delegate_context: DelegateContext) -> DelegateRunResult:
         """
-        Execute the given Task using the provided prepared_inputs and return
+        Execute the given Task using the provided delegate_context and return
         a DelegateRunResult.
 
         Implementations are responsible for:
-        - Constructing the actual prompt / tool call from `task` and `prepared_inputs`
+        - Constructing the actual prompt / tool call from `task` and `delegate_context`
         - Executing the delegate agent (e.g., LLM, tool, service)
         - Mapping the raw outputs into a DelegateRunResult that matches
           the task's declared outputs.
@@ -47,15 +47,20 @@ class DelegateRunner:
             name="OutputSpecification",
         )
 
-        # TODO: Use DelegateContext and prepared_inputs to build a richer prompt.
-        prompt_dict: Dict[str, Any] = {}
-
+        # Build a rich, structured prompt that explains:
+        # - Which dependency each value came from (by task id)
+        # - The description of each output from the producing task
+        # - The actual value produced
+        prompt_dict = self.build_prompt_dict(delegate_context, task)
 
         prompt = format_as_xml(prompt_dict)
 
         system_prompt = (
-            "Execute the given task using the provided inputs and return according "
-            "to the OutputSpecification.\n"
+            "You are executing a task in a dependency graph.\n"
+            "You are given the current task and the results of its dependency tasks.\n"
+            "Use the dependency outputs, guided by their descriptions, as inputs to "
+            "complete the current task.\n"
+            "Return your answer strictly according to the OutputSpecification.\n\n"
         ) + task.prompt
 
         agent = Agent(
@@ -72,3 +77,51 @@ class DelegateRunner:
             output_types=[o.type for o in task.outputs],
             outputs=list(result.data.values()) if hasattr(result, "data") else [],
         )
+
+    def build_prompt_dict(self, delegate_context: DelegateContext, task: Task) -> dict[str, Any]:
+        prompt_dict: Dict[str, Any] = {
+            "current_task": {
+                "id": task.id,
+                "description": "This is the task you must now execute.",
+            },
+            "dependencies": [],
+        }
+
+        dependencies_list: List[Dict[str, Any]] = []
+
+        for dep_task_id, dep_task in delegate_context.dependency_tasks.items():
+            dep_result = delegate_context.dependency_results.get(dep_task_id)
+            if dep_result is None:
+                # If we have a task but no result, just record that fact for the agent.
+                dependencies_list.append(
+                    {
+                        "task_id": dep_task_id,
+                        "note": "No run result is available for this dependency. It may not have had an output.",
+                    }
+                )
+                continue
+
+            # Pair each declared output with the corresponding value from the run result.
+            # We rely on DelegateRunResult.__post_init__ to have validated lengths/types.
+            outputs_with_context: List[Dict[str, Any]] = []
+            for index, output_spec in enumerate(dep_task.outputs):
+                value = dep_result.outputs[index] if index < len(dep_result.outputs) else None
+                outputs_with_context.append(
+                    {
+                        "index": index,
+                        "description": output_spec.description,
+                        "declared_type": output_spec.type,
+                        "value": value,
+                    }
+                )
+
+            dependencies_list.append(
+                {
+                    "task_id": dep_task_id,
+                    "description": "Outputs from a dependency task that you may use as inputs.",
+                    "outputs": outputs_with_context,
+                }
+            )
+
+        prompt_dict["dependencies"] = dependencies_list
+        return prompt_dict
