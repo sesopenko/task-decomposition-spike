@@ -1,7 +1,7 @@
 import pytest
 
-from src.task_decomposition.models_schema import TaskPlan, Task, Dependency, Input, Output
-from src.task_decomposition.task_plan_validator import TaskPlanValidator
+from task_decomposition.models_schema import TaskPlan, Task, Dependency, Input, Output
+from task_decomposition.task_plan_validator import TaskPlanValidator
 
 
 class TestTaskPlanValidator:
