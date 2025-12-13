@@ -38,6 +38,45 @@ class Dependency(BaseModel):
         description="A list of inputs required by the dependency. Will fail if the dependency task's outputs don't match these inputs."
     )
 
+    def InputsToSchema(self) -> str:
+        """
+        Convert this Dependency's inputs into a JSON Schema string.
+
+        - The schema is always for an object.
+        - Each Input becomes a property named item_0, item_1, ..., item_n-1.
+        - All properties are required.
+        - Input.type is mapped to the appropriate JSON Schema "type".
+        """
+        import json
+
+        type_map: Dict[DataType, str] = {
+            "string": "string",
+            "integer": "integer",
+            "float": "number",
+            "boolean": "boolean",
+        }
+
+        properties: Dict[str, Dict[str, Any]] = {}
+        required: List[str] = []
+
+        for index, input_ in enumerate(self.inputs):
+            key = f"item_{index}"
+            properties[key] = {
+                "type": type_map[input_.type],
+                "description": input_.description,
+            }
+            required.append(key)
+
+        schema: Dict[str, Any] = {
+            "type": "object",
+            "properties": properties,
+        }
+
+        if required:
+            schema["required"] = required
+
+        return json.dumps(schema)
+
 
 class Task(BaseModel):
     id: str = Field(
@@ -97,6 +136,7 @@ class Task(BaseModel):
             schema["required"] = required
 
         return json.dumps(schema)
+
 
 class TaskPlan(BaseModel):
     objective: str = Field(
