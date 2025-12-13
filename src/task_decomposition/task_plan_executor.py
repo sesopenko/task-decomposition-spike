@@ -1,8 +1,11 @@
+import logging
 from typing import Dict
 
 from task_decomposition.models_schema import TaskPlan, Task
 from task_decomposition.task_graph_builder import TaskGraphBuilder, DelegateRunResult
 from task_decomposition.delegate_runner import DelegateRunner, DelegateContext
+
+logger = logging.getLogger(__name__)
 
 
 class TaskPlanExecutor:
@@ -97,4 +100,10 @@ class TaskPlanExecutor:
 
         Delegates the actual execution to the injected DelegateRunner instance.
         """
+        logger.info(
+            "TaskPlanExecutor.run: executing task '%s' with %d dependency tasks and %d dependency results",
+            task.id,
+            len(delegate_context.dependency_tasks),
+            len(delegate_context.dependency_results),
+        )
         return self._delegate_runner.run(task, delegate_context)
