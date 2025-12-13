@@ -51,6 +51,7 @@ class DelegateRunner:
         # - Which dependency each value came from (by task id)
         # - The description of each output from the producing task
         # - The actual value produced
+        # - How the current task describes the inputs it expects from each dependency
         prompt_dict = self.build_prompt_dict(delegate_context, task)
 
         prompt = format_as_xml(prompt_dict)
@@ -58,9 +59,9 @@ class DelegateRunner:
         system_prompt = (
             "You are executing a task in a dependency graph.\n"
             "You are given the current task and the results of its dependency tasks.\n"
-            "Use the dependency outputs, guided by their descriptions, as inputs to "
-            "complete the current task.\n"
-            "Return your answer strictly according to the OutputSpecification.\n\n"
+            "Use the dependency outputs, guided by their descriptions and the\n"
+            "current task's input descriptions, as inputs to complete the current\n"
+            "task. Return your answer strictly according to the OutputSpecification.\n\n"
         ) + task.prompt
 
         agent = Agent(
@@ -79,6 +80,17 @@ class DelegateRunner:
         )
 
     def build_prompt_dict(self, delegate_context: DelegateContext, task: Task) -> dict[str, Any]:
+        """
+        Build a structured dictionary that will be converted to XML and sent
+        to the delegate agent.
+
+        It includes:
+        - The current task metadata.
+        - For each dependency:
+          - The dependency task id.
+          - Any available run result outputs, with their descriptions and types.
+          - The current task's declared input descriptions for that dependency.
+        """
         prompt_dict: Dict[str, Any] = {
             "current_task": {
                 "id": task.id,
@@ -89,14 +101,35 @@ class DelegateRunner:
 
         dependencies_list: List[Dict[str, Any]] = []
 
+        # Build a quick lookup from dependency taskId -> list of Input models
+        # as declared on the *current* task.
+        dependency_input_specs: Dict[str, List[Any]] = {}
+        for dep in task.dependsOn:
+            dependency_input_specs.setdefault(dep.taskId, []).extend(dep.inputs)
+
         for dep_task_id, dep_task in delegate_context.dependency_tasks.items():
             dep_result = delegate_context.dependency_results.get(dep_task_id)
+
+            # Map the current task's declared inputs for this dependency, if any.
+            input_specs_for_dep = dependency_input_specs.get(dep_task_id, [])
+            mapped_inputs: List[Dict[str, Any]] = []
+            for index, input_spec in enumerate(input_specs_for_dep):
+                mapped_inputs.append(
+                    {
+                        "index": index,
+                        "description": input_spec.description,
+                        "declared_type": input_spec.type,
+                    }
+                )
+
             if dep_result is None:
-                # If we have a task but no result, just record that fact for the agent.
+                # If we have a task but no result, just record that fact for the agent,
+                # along with how the current task *expects* to use this dependency.
                 dependencies_list.append(
                     {
                         "task_id": dep_task_id,
                         "note": "No run result is available for this dependency. It may not have had an output.",
+                        "expected_inputs_from_this_dependency": mapped_inputs,
                     }
                 )
                 continue
@@ -120,6 +153,7 @@ class DelegateRunner:
                     "task_id": dep_task_id,
                     "description": "Outputs from a dependency task that you may use as inputs.",
                     "outputs": outputs_with_context,
+                    "expected_inputs_from_this_dependency": mapped_inputs,
                 }
             )
 
