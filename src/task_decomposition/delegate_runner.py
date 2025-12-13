@@ -1,10 +1,14 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List
+import logging
+from pprint import pformat
 
 from pydantic_ai import Agent, StructuredDict, format_as_xml
 
 from task_decomposition.models_schema import Task
 from task_decomposition.task_graph_builder import DelegateRunResult
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -158,4 +162,12 @@ class DelegateRunner:
             )
 
         prompt_dict["dependencies"] = dependencies_list
+
+        # Log the final prompt_dict for debugging/inspection in a human-readable way.
+        logger.debug(
+            "DelegateRunner.build_prompt_dict for task %s:\n%s",
+            task.id,
+            pformat(prompt_dict),
+        )
+
         return prompt_dict
