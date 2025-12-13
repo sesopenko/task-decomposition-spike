@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-from task_decomposition.models import Task, Output
+from task_decomposition.models import Task
 from task_decomposition.task_graph_builder import DelegateRunResult
 
 
@@ -15,7 +15,7 @@ class DelegateRunner(ABC):
     """
 
     @abstractmethod
-    def run(self, task: Task, prepared_inputs: List[Output]) -> DelegateRunResult:
+    def run(self, task: Task, prepared_inputs: Dict[str, Any]) -> DelegateRunResult:
         """
         Execute the given Task using the provided prepared_inputs and return
         a DelegateRunResult.
