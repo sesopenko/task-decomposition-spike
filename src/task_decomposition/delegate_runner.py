@@ -77,12 +77,49 @@ class DelegateRunner:
         )
         result = agent.run_sync(prompt)
 
-        # NOTE: This is a placeholder; actual mapping from `result` to
-        # DelegateRunResult should be implemented as needed.
+        # pydantic-ai returns the structured output on `result.output`,
+        # mirroring how main.py accesses the TaskPlan result.
+        # The StructuredDict output is an object with a `.data` dict that
+        # matches the JSON schema keys (item_0, item_1, ...).
+        if not hasattr(result, "output"):
+            raise RuntimeError(
+                f"DelegateRunner.run expected result to have an 'output' attribute, "
+                f"got {type(result).__name__} with attributes {dir(result)}"
+            )
+
+        structured_output = result.output
+
+        # For a StructuredDict, the actual values are on `.data`.
+        # Fall back to treating `structured_output` as a mapping if `.data`
+        # is not present, to be defensive against version differences.
+        if hasattr(structured_output, "data"):
+            output_mapping = structured_output.data  # type: ignore[attr-defined]
+        else:
+            if not isinstance(structured_output, dict):
+                raise RuntimeError(
+                    "DelegateRunner.run expected structured_output to have a 'data' "
+                    "attribute or be a dict-like mapping, "
+                    f"got {type(structured_output).__name__}"
+                )
+            output_mapping = structured_output
+
+        # Ensure deterministic ordering that matches the schema: item_0, item_1, ...
+        expected_count = len(task.outputs)
+        expected_keys = [f"item_{i}" for i in range(expected_count)]
+        outputs: List[Any] = []
+
+        for key in expected_keys:
+            if key not in output_mapping:
+                raise RuntimeError(
+                    f"DelegateRunner.run: missing expected key '{key}' in delegate "
+                    f"output for task '{task.id}'. Available keys: {list(output_mapping.keys())}"
+                )
+            outputs.append(output_mapping[key])
+
         return DelegateRunResult(
             id=task.id,
             output_types=[o.type for o in task.outputs],
-            outputs=list(result.data.values()) if hasattr(result, "data") else [],
+            outputs=outputs,
         )
 
     def build_prompt_dict(self, delegate_context: DelegateContext, task: Task) -> dict[str, Any]:
