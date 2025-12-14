@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 from typing import Any, Dict, List
 import logging
@@ -46,8 +47,9 @@ class DelegateRunner:
         - Mapping the raw outputs into a DelegateRunResult that matches
           the task's declared outputs.
         """
+        schema_dict = json.loads(task.OutputsToSchema())
         task_output = StructuredDict(
-            task.OutputsToSchema(),
+            schema_dict,
             name="OutputSpecification",
         )
 
