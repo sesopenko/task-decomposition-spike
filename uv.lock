@@ -2260,6 +2260,7 @@ dependencies = [
     { name = "inflect" },
     { name = "pydantic-ai" },
     { name = "pytest" },
+    { name = "rich" },
 ]
 
 [package.metadata]
@@ -2267,6 +2268,7 @@ requires-dist = [
     { name = "inflect", specifier = ">=7.5.0" },
     { name = "pydantic-ai", specifier = ">=1.27.0" },
     { name = "pytest", specifier = ">=9.0.2" },
+    { name = "rich", specifier = "==14.2.0" },
 ]
 
 [[package]]

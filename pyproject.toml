@@ -8,6 +8,7 @@ dependencies = [
     "inflect>=7.5.0",
     "pydantic-ai>=1.27.0",
     "pytest>=9.0.2",
+    "rich==14.2.0",
 ]
 
 [project.scripts]

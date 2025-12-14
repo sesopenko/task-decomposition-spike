@@ -1,6 +1,8 @@
 import logging
 from typing import Dict
 
+from rich.progress import Progress
+
 from task_decomposition.models_schema import TaskPlan, Task
 from task_decomposition.task_graph_builder import TaskGraphBuilder, DelegateRunResult
 from task_decomposition.delegate_runner import DelegateRunner, DelegateContext
@@ -36,21 +38,30 @@ class TaskPlanExecutor:
         # Build a quick lookup from id -> Task
         tasks_by_id: Dict[str, Task] = {task.id: task for task in self._task_plan.tasks}
 
-        for task_id in sorted_ids:
-            task = tasks_by_id.get(task_id)
-            if task is None:
-                raise KeyError(f"Task with id {task_id!r} not found in TaskPlan")
+        # Use a Rich progress bar to show execution progress across tasks
+        with Progress() as progress:
+            task_progress = progress.add_task(
+                "[green]Executing tasks...", total=len(sorted_ids)
+            )
 
-            # Build DelegateContext for this task based on its dependencies
-            delegate_context = self._build_delegate_context(task, tasks_by_id)
+            for task_id in sorted_ids:
+                task = tasks_by_id.get(task_id)
+                if task is None:
+                    raise KeyError(f"Task with id {task_id!r} not found in TaskPlan")
 
-            # Execute the task via the delegate runner and store the result
-            result = self.run(task, delegate_context)
-            if not isinstance(result, DelegateRunResult):
-                raise TypeError(
-                    f"run() must return a DelegateRunResult, got {type(result).__name__}"
-                )
-            self.results[task_id] = result
+                # Build DelegateContext for this task based on its dependencies
+                delegate_context = self._build_delegate_context(task, tasks_by_id)
+
+                # Execute the task via the delegate runner and store the result
+                result = self.run(task, delegate_context)
+                if not isinstance(result, DelegateRunResult):
+                    raise TypeError(
+                        f"run() must return a DelegateRunResult, got {type(result).__name__}"
+                    )
+                self.results[task_id] = result
+
+                # Advance the progress bar after each task completes
+                progress.advance(task_progress, 1)
 
     def _build_delegate_context(
         self,
