@@ -6,6 +6,8 @@ from task_decomposition.cost_calculator import calculate_cost
 from task_decomposition.models_schema import TaskPlan
 from task_decomposition.task_plan_builder import DefaultTaskPlanAgentBuilder
 from task_decomposition.task_plan_validator import TaskPlanValidator
+from task_decomposition.task_plan_executor import TaskPlanExecutor
+from task_decomposition.delegate_runner import DelegateRunner
 import inflect
 
 p = inflect.engine()
@@ -88,6 +90,10 @@ Each location's document must be formatted with markdown.
         )
 
     # At this point, `plan` is guaranteed to be the last valid TaskPlan
+    plan = last_plan
+    if plan is None:
+        raise RuntimeError("No TaskPlan was generated")
+
     logger.info("Objective: %s", plan.objective)
     logger.info("")
     logger.info("Requires %s %s", len(plan.tasks), p.plural("task", len(plan.tasks)))
@@ -104,6 +110,19 @@ Each location's document must be formatted with markdown.
         for output in task.outputs:
             logger.info("Output (%s): %s", output.type, output.description)
         logger.info("")
+
+    # Execute the validated TaskPlan using TaskPlanExecutor and DelegateRunner
+    logger.info("Executing TaskPlan with %s", TaskPlanExecutor.__name__)
+    delegate_runner = DelegateRunner()
+    executor = TaskPlanExecutor(plan, delegate_runner)
+    executor.execute()
+
+    # Log a brief summary of execution results
+    logger.info("Execution complete. Collected results for %s %s.", len(executor.results), p.plural("task", len(executor.results)))
+    for task_id, result in executor.results.items():
+        logger.info("Result for task '%s':", task_id)
+        logger.info("  Output types: %s", result.output_types)
+        logger.info("  Outputs: %s", result.outputs)
 
 
 if __name__ == "__main__":
