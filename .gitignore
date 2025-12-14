@@ -17,3 +17,5 @@ wheels/
 
 .aider*
 !.aider.conf.yml
+
+output

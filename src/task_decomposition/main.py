@@ -1,4 +1,6 @@
 import logging
+from datetime import datetime
+from pathlib import Path
 
 from pydantic_ai import Agent
 
@@ -7,16 +9,41 @@ from task_decomposition.models_schema import TaskPlan
 from task_decomposition.task_plan_builder import DefaultTaskPlanAgentBuilder
 from task_decomposition.task_plan_validator import TaskPlanValidator
 from task_decomposition.task_plan_executor import TaskPlanExecutor
-from task_decomposition.delegate_runner import DelegateRunner
+from task_decomposition.delegate_runner import DelegateRunner, set_run_output_dir, OUTPUT_ROOT
 import inflect
 
 p = inflect.engine()
 logger = logging.getLogger(__name__)
 
 
+def _initialise_run_output_dir() -> Path:
+    """
+    Create and return a per-run output directory under the project-level
+    'output' directory.
+
+    The directory name is based on the current local date and time to keep
+    outputs from different runs isolated, for example:
+
+        output/2025-03-01_14-23-45
+    """
+    # Ensure the root output directory exists
+    OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    run_dir = OUTPUT_ROOT / timestamp
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    logger.info("Run output directory initialised at: %s", run_dir)
+    return run_dir
+
+
 def main():
     # Basic logging configuration; adjust as needed by the application
     logging.basicConfig(level=logging.INFO)
+
+    # Initialise per-run output directory and configure the save_file tool
+    run_output_dir = _initialise_run_output_dir()
+    set_run_output_dir(run_output_dir)
 
     # Build the TaskPlan-producing agent via the abstraction
     builder = DefaultTaskPlanAgentBuilder()
@@ -59,7 +86,9 @@ Each location must have the following sections in the document:
 * Geography & Environment. Purpose: Ground the location int he world's physical reality
 * Notable Features. Purpose: Identify key areas a party may explore.
 
-Each location's document must be formatted with markdown.
+Each location's document should be a "chapter" long, written at the quality and detail for commercial sale.
+
+Each location's document must be formatted with markdown saved in a file for each location.
 
     """
         )
@@ -118,7 +147,11 @@ Each location's document must be formatted with markdown.
     executor.execute()
 
     # Log a brief summary of execution results
-    logger.info("Execution complete. Collected results for %s %s.", len(executor.results), p.plural("task", len(executor.results)))
+    logger.info(
+        "Execution complete. Collected results for %s %s.",
+        len(executor.results),
+        p.plural("task", len(executor.results)),
+    )
     for task_id, result in executor.results.items():
         logger.info("Result for task '%s':", task_id)
         logger.info("  Output types: %s", result.output_types)

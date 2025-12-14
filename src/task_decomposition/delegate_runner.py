@@ -2,14 +2,39 @@ import json
 from dataclasses import dataclass
 from typing import Any, Dict, List
 import logging
+from pathlib import Path
 from pprint import pformat
 
-from pydantic_ai import Agent, StructuredDict, format_as_xml
+from pydantic_ai import Agent, StructuredDict, Tool, format_as_xml
 
 from task_decomposition.models_schema import Task
 from task_decomposition.task_graph_builder import DelegateRunResult
 
 logger = logging.getLogger(__name__)
+
+
+# Base directory where all run outputs are stored (project_root/output)
+OUTPUT_ROOT = Path.cwd() / "output"
+
+# Subdirectory for this specific run, created at startup in main.py
+# and set via `set_run_output_dir`. Defaults to OUTPUT_ROOT if not set.
+RUN_OUTPUT_DIR: Path = OUTPUT_ROOT
+
+
+def set_run_output_dir(path: Path) -> None:
+    """
+    Set the base directory used by the save_file tool for this run.
+
+    This should be called once at system startup (for example, in main.py)
+    after creating a timestamped subdirectory under the project-level
+    'output' directory.
+
+    Args:
+        path: Absolute path to the directory where all relative paths
+              passed to save_file will be rooted.
+    """
+    global RUN_OUTPUT_DIR
+    RUN_OUTPUT_DIR = path
 
 
 @dataclass
@@ -25,6 +50,44 @@ class DelegateContext:
     """
     dependency_tasks: Dict[str, Task]
     dependency_results: Dict[str, DelegateRunResult]
+
+
+def save_file(relative_path: str, content: str) -> str:
+    """
+    Save the given content to a file at the provided relative path.
+
+    The path is interpreted as relative to a per-run output directory.
+    Any missing parent directories are created automatically.
+
+    Args:
+        relative_path: A relative file path and filename, such as
+                       "docs/foo/blah.md".
+        content: The text content to write to the file.
+
+    Returns:
+        The absolute path of the file that was written, as a string.
+    """
+    # Normalise and ensure we only work with relative paths
+    rel_path = Path(relative_path)
+    if rel_path.is_absolute():
+        raise ValueError(
+            f"save_file tool only accepts relative paths, got absolute path: {relative_path!r}"
+        )
+
+    # Ensure the run output directory exists
+    RUN_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    target_path = RUN_OUTPUT_DIR / rel_path
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_text(content, encoding="utf-8")
+
+    logger.info(
+        "save_file tool wrote %d bytes to %s (run output dir: %s)",
+        len(content),
+        target_path,
+        RUN_OUTPUT_DIR,
+    )
+    return str(target_path.resolve())
 
 
 class DelegateRunner:
@@ -68,12 +131,30 @@ class DelegateRunner:
             "Use the dependency outputs, guided by their descriptions and the\n"
             "current task's input descriptions, as inputs to complete the current\n"
             "task. Return your answer strictly according to the OutputSpecification.\n\n"
+            "You also have access to a tool named `save_file` that allows you to write\n"
+            "text content to files on disk. Use this tool whenever the task's intent\n"
+            "or outputs describe creating or updating documents or other file-based\n"
+            "artifacts.\n\n"
+            "Tool: save_file(relative_path: string, content: string) -> string\n"
+            "- `relative_path` is a relative file path and filename, such as\n"
+            "  'docs/foo/blah.md'. It must NOT be an absolute path.\n"
+            "- `content` is the full text content to write into the file.\n"
+            "- The tool will create any missing parent directories automatically.\n"
+            "- The tool returns the absolute path of the file that was written.\n\n"
+            "Guidance for using save_file:\n"
+            "- Choose clear, descriptive relative paths that reflect the purpose of\n"
+            "  the file (for example, 'docs/locations/sandpoint_hinterlands.md').\n"
+            "- Ensure that the content you pass is exactly what should appear in the\n"
+            "  file, including any required formatting such as Markdown.\n"
+            "- If the task requires multiple files, call `save_file` once for each\n"
+            "  file you need to create.\n\n"
         ) + task.prompt
 
         agent = Agent(
             "openai:gpt-5.1",
             output_type=task_output,
             system_prompt=system_prompt,
+            tools=[Tool(save_file, takes_ctx=False)],
         )
         result = agent.run_sync(prompt)
 
